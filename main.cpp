@@ -14,6 +14,9 @@ int main(int argc, const char * argv[])
 	//fonction tri par date
 	
 	//fonction qui grouperai les clients
+	
+	//fonction qui calculerai les couts, qui serai enregistrer et comparer	
+	
     return 0;
 }
 
