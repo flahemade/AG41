@@ -28,4 +28,6 @@ int coutStockage(int date,list<int> *livraisons){
     //On retourne ce résultat qui est le coût si cette livraison groupée arrive à cette date.
 }
 
-//Cependant, il reste à créer une fonction qui permette de prendre en compte le coût de livraison
+//Cependant, il reste à créer une fonction qui permette de prendre en compte le coût de livraison.
+//Ainsi, le coût de livraison dépend seulement du client et de la distance qui le sépare de l'entrepôt.
+//On peut aussi les résumer à un tableau de distances dont l'index donnerait la distance A/R à un client.
