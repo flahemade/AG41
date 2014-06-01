@@ -9,6 +9,8 @@
 #include <iostream>
 using namespace std;
 
+//Pour la structure de données, vaut-il mieux partir sur 3 listes donnant chacune une ligne du tableau ?
+
 int main(int argc, const char * argv[])
 {
 
