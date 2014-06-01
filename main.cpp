@@ -20,10 +20,12 @@ int main(int argc, const char * argv[])
 
 //Fonction qui calcule le coût d'une livraison en fonction de la date à laquelle elle arrive
 //On passe en argument la date, et les numéros de livraisons qu'on a regroupées ensemble
-int coutLivraison(int date,list<int> *livraisons){
+int coutStockage(int date,list<int> *livraisons){
     //On récupère la date due de chaque livraison présente dans la liste.
         //Pour chaque, on fait la soustraction par la date
         //On additionne les résultats ensemble au fur et à mesure
     //Une fois toutes les différences de dâtes parcourues, on multiplie par Beta x le nombre de livraisons
     //On retourne ce résultat qui est le coût si cette livraison groupée arrive à cette date.
 }
+
+//Cependant, il reste à créer une fonction qui permette de prendre en compte le coût de livraison
