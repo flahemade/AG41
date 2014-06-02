@@ -182,12 +182,18 @@ int main(int argc, const char * argv[]) {
 	int client[_NBRCLIENTS] = {100,100,100,100};
 	list<TEcheance> echeance;
 
-	echeance.push_back(ajoutList(1, 1, 250));
-	echeance.push_back(ajoutList(2, 1, 250));
-	echeance.push_back(ajoutList(3, 3, 240));
-	echeance.push_back(ajoutList(4, 3, 300));
-	echeance.push_back(ajoutList(5, 3, 340));
-
+	echeance.push_back(ajoutList(1, 2, 1000));
+	echeance.push_back(ajoutList(2, 1, 1022));
+	echeance.push_back(ajoutList(3, 3, 1044));
+	echeance.push_back(ajoutList(4, 1, 1046));
+	echeance.push_back(ajoutList(5, 2, 1080));
+	echeance.push_back(ajoutList(6, 3, 1092));
+	echeance.push_back(ajoutList(7, 1, 1115));
+	echeance.push_back(ajoutList(8, 2, 1152));
+	echeance.push_back(ajoutList(9, 3, 1182));
+	echeance.push_back(ajoutList(10, 1, 1212));
+	
+	
 	afficheClient(client);
 	
 	cout << endl << "avant tri : " << endl;
@@ -199,7 +205,7 @@ int main(int argc, const char * argv[]) {
 	afficheList(echeance);
 		
 	//fonction qui grouperai les clients si retourne 0 alors aucun groupe dans cette interval
-	int var = groupList(echeance, 200, 400);
+	int var = groupList(echeance, 700, 1300);
 	cout << endl << "nombre de groupe : " << var << endl;
 
     return 0;
