@@ -97,10 +97,11 @@ void triList(list<TEcheance>* echeance){
  *	Groupe une liste de client a partir du debut inclu et d'une fin exclu
  *
  */
-bool groupList(list<TEcheance> echeance, int deb, int fin){
+int groupList(list<TEcheance> echeance, int deb, int fin){
 	list<TEcheance> temp;
 	list<TEcheance>::const_iterator it= echeance.begin();
 	list<TEcheance>::const_iterator lit;
+	int nbrGroupe = 0;
 	
 	//identifie le debut de la future liste a grouper
 	int test =0;
@@ -122,11 +123,13 @@ bool groupList(list<TEcheance> echeance, int deb, int fin){
 	}
 	temp.assign(lit, it);		//creer une liste restreinte sur laquel nous devons effectuer le groupement
 	
-	cout<<"groupement"<<endl;
+	cout << endl << "groupement" << endl;
 	afficheList(temp);
-	if(temp.empty())
-		return 0;
+	cout << endl;
 	
+	if(temp.empty())
+		return nbrGroupe;
+
 	//Nous allons maintenant effectuer une liste de client grouper
 	list<Groupement> groupe;
 	it = temp.begin();					//iterateur sur la liste a grouper
@@ -145,11 +148,13 @@ bool groupList(list<TEcheance> echeance, int deb, int fin){
 			}
 			git++;
 		}
-		if(test == 0)
+		if(test == 0){			//si client n'est pas dans un groupe alors
 			groupe.push_back(ajoutGroupe(it->cli, it->di, it->di, 1));
+			nbrGroupe++;
+		}
 	}
 	afficheGroupe(groupe);
-	return 1;
+	return nbrGroupe;
 }
 
 //Fonction qui calcule le coût d'une livraison en fonction de la date à laquelle elle arrive
@@ -185,17 +190,17 @@ int main(int argc, const char * argv[]) {
 
 	afficheClient(client);
 	
-	cout << "avant tri : " << endl;
+	cout << endl << "avant tri : " << endl;
 	afficheList(echeance);
 	
 	triList(&echeance);
 	
-	cout << "apres tri : " << endl;
+	cout << endl << "apres tri : " << endl;
 	afficheList(echeance);
-	
+		
 	//fonction qui grouperai les clients si retourne 0 alors aucun groupe dans cette interval
-	groupList(echeance, 200, 400);
-	
+	int var = groupList(echeance, 200, 400);
+	cout << endl << "nombre de groupe : " << var << endl;
 
     return 0;
 }
