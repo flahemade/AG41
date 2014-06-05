@@ -1,23 +1,47 @@
 #include <iostream>
 #include <list>
-#define _NBRCLIENTS 4
+#include <boost/tokenizer.hpp>
+#include <iomanip>      // std::setprecision
+#include <fstream>
+
+#include "Parser_frame.hpp"
 
 using namespace std;
 
+/**
+ *  Declaration des variables global
+ */
+
+int nbrClient;
+int nbrTrajet;
+float coutTransport;
+int capacite;
+
+typedef struct client{
+	int numClient;
+	float distance;
+	float cout;
+}Client;
+list<Client> cl;
+
 typedef struct echeance{
 	int i;
-	int cli;
-	int di;
+	float cli;
+	float di;
 }TEcheance;
+list<TEcheance> echeance;
 
 typedef struct groupement{
 	int cli;
-	int datDeb;
-	int datFin;
+	float datDeb;
+	float datFin;
 	int nbrColis;
 }Groupement;
+list<Groupement> groupement;
 
-//petite fonction permettant d'ajouter des valeurs à notre liste d'échancier
+/**
+ *  fonction permettant d'ajouter des valeurs à notre liste d'échancier
+ */
 TEcheance ajoutList(int i, int cli, int di){
 	TEcheance temp;
 	
@@ -39,9 +63,24 @@ Groupement ajoutGroupe(int cli, int datDeb, int datFin, int nbrColis){
 	return groupe;
 }
 
-void afficheClient(int client[_NBRCLIENTS]){
-	for(int i=0; i< _NBRCLIENTS; i++)
-		cout << "Le cout de la distance entre le client" << i+1 << " et l'entrepot est de " << client[i] << endl ;
+Client ajoutClient(int numClient, float cout, float distance){
+	Client client;
+	
+	client.numClient = numClient;
+	client.distance = distance;
+	client.cout = cout;
+	
+	return client;
+}
+
+void afficheClient(list<Client> client){
+	if(!client.empty()){
+		list<Client>::const_iterator cit=client.begin() ;
+		for(;cit != client.end();cit++)
+			cout << "Client numero : " << cit->numClient << " cout : " << cit->cout << " distance : " << cit->distance << endl;
+	}
+	else
+		cout << "aucun client"<<endl;
 }
 
 void afficheGroupe(list<Groupement> groupe){
@@ -55,8 +94,10 @@ void afficheGroupe(list<Groupement> groupe){
 		cout << "groupe vide"<<endl;
 }
 
-//Permet d'afficher la liste "echeance"
-void afficheList(list<TEcheance> echeance){
+/**
+ *  afficher la liste "echeance"
+ */
+void afficheEcheance(list<TEcheance> echeance){
 	cout << "i - cli - di" << endl;
 	
 	list<TEcheance>::const_iterator lit=echeance.begin() ;
@@ -64,9 +105,21 @@ void afficheList(list<TEcheance> echeance){
 		cout << lit->i << " - " << lit->cli << "\t- " << lit->di << endl;
 }
 
-//Fonction tri par date
-//On recupere en argument une liste d'une structure d'echeance que l'on tri en fonction de la date d'echeance
-//Puis nous retournons la nouvelle liste
+void affiche(){
+	cout << "nbrTrajet : " << nbrTrajet <<endl;
+	cout << "nbrClient : " << nbrClient <<endl;
+	cout << "transporteur capaciter : " << capacite <<endl;
+	cout << "cout transport : " << coutTransport <<endl;
+
+	afficheClient(cl);
+	afficheEcheance(echeance);
+}
+
+/**
+ *  Fonction tri par date
+ *  On recupere en argument une liste d'une structure d'echeance que l'on tri en fonction de la date d'echeance
+ *  Puis nous retournons la nouvelle liste
+ */
 void triList(list<TEcheance>* echeance){
 	list<TEcheance> temp;								//créer liste temporaire
 
@@ -92,10 +145,8 @@ void triList(list<TEcheance>* echeance){
 	echeance->assign(temp.begin(), temp.end());				//remplace tous les elements de la liste echeance par la liste temporaire
 }
 
-/*
- *
+/**
  *	Groupe une liste de client a partir du debut inclu et d'une fin exclu
- *
  */
 int groupList(list<TEcheance> echeance, int deb, int fin){
 	list<TEcheance> temp;
@@ -124,7 +175,7 @@ int groupList(list<TEcheance> echeance, int deb, int fin){
 	temp.assign(lit, it);		//creer une liste restreinte sur laquel nous devons effectuer le groupement
 	
 	cout << endl << "groupement" << endl;
-	afficheList(temp);
+	afficheEcheance(temp);
 	cout << endl;
 	
 	if(temp.empty())
@@ -169,45 +220,133 @@ int coutStockage(int date, list<int> *livraisons) {
 	return 1;
 }
 
-//Cependant, il reste à créer une fonction qui permette de prendre en compte le coût de livraison.
-//Ainsi, le coût de livraison dépend seulement du client et de la distance qui le sépare de l'entrepôt.
-//On peut aussi les résumer à un tableau de distances dont l'index donnerait la distance A/R à un client.
+string split( const string & Msg, const string & Separators, int position, int ligne) {
+	// typedef pour alléger l'écriture
+	typedef boost::tokenizer<boost::char_separator<char> > my_tok;
+	// séparateur personnalisé
+	boost::char_separator<char> sep( Separators.c_str() );
+	// construire le tokenizer personnalisé
+	my_tok tok( Msg, sep );
+	
+	// itérer la séquence de tokens
+	string chaine;
+	int j=0;
+	for ( my_tok::const_iterator i = tok.begin(); i != tok.end(); ++i ) {
+		// afficher chaque token extrait
+		if( j == position)
+			chaine = *i;
+		j++;
+	}
 
+	switch (ligne) {
+		case 0:
+			nbrTrajet = atoi(chaine.c_str());
+			break;
+		case 1:
+			nbrClient = atoi(chaine.c_str());
+			break;
+		case 2:
+			capacite = atoi(chaine.c_str());
+			break;
+		case 3:
+			coutTransport = atof(chaine.c_str());
+			break;
+		default:
+			return chaine;
+			break;
+	}
+	return chaine;
+}
+
+
+bool lectureInstance(const char * argv[]){
+	/**
+	 *  initialisation du tampon du fichier contenant l'instance
+	 */
+	filebuf fb;
+	
+	if(!fb.open(argv[1], ios::in)) {
+		cout << "Error while opening file : " << argv[0]<< endl;
+		return EXIT_FAILURE;
+	}
+	
+	/**
+	 *  initialisation du flux d'entrée à partir du tampon
+	 */
+	istream is(&fb);
+	string str;
+	int ligne = 0;
+	while(ligne < 4){
+		if (getline(is, str)) {
+			split(str, ":", 1, ligne);
+		}
+		ligne++;
+	}
+	
+	int numCl = 0;
+	float coutTrans = 0.0, distance = 0.0;
+	
+	for( int position = 0; position<nbrClient; position++){
+		if(getline(is, str))
+			numCl = atoi(split(str, ":", 1, -1).c_str() );
+		if(getline(is, str))
+			coutTrans = atof(split(str, ":", 1, -1).c_str() );
+		if(getline(is, str))
+			distance = atof(split(str, ":", 1, -1).c_str() );
+		cl.push_back(ajoutClient(numCl, coutTrans, distance));
+	}
+	
+	string chaine1, chaine2;
+		if(getline(is, str))
+			chaine1 = split(str, ":", 1, -1);
+		if(getline(is, str))
+			chaine2 = split(str, ":", 1, -1);
+	
+	//cout << "test " << split(chaine2, ";",3, -1 ) << " --> " << atof(split(chaine2, ";",3, -1 ).c_str()) << endl << endl;
+	
+	for(int i=0; i<nbrTrajet;i++)
+		echeance.push_back(ajoutList(i, atof(split(chaine1, ";",i, -1 ).c_str() ), atof(split(chaine2, ";",i, -1 ).c_str()) ) );
+
+	return true;
+}
 
 
 //Pour la structure de données, vaut-il mieux partir sur 3 listes donnant chacune une ligne du tableau ?
 
 int main(int argc, const char * argv[]) {
 
-	int client[_NBRCLIENTS] = {100,100,100,100};
+	/*
+	int client[nbrClient] = {100,100,100,100};
 	list<TEcheance> echeance;
-
 	echeance.push_back(ajoutList(1, 2, 1000));
-	echeance.push_back(ajoutList(2, 1, 1022));
-	echeance.push_back(ajoutList(3, 3, 1044));
-	echeance.push_back(ajoutList(4, 1, 1046));
-	echeance.push_back(ajoutList(5, 2, 1080));
-	echeance.push_back(ajoutList(6, 3, 1092));
-	echeance.push_back(ajoutList(7, 1, 1115));
-	echeance.push_back(ajoutList(8, 2, 1152));
-	echeance.push_back(ajoutList(9, 3, 1182));
-	echeance.push_back(ajoutList(10, 1, 1212));
+	*/
+	
+	/**
+	 *  on passe en argument de ligne de commande le chemin vers le fichier décrivant l'instance
+	 */
+	if(argc != 2) {
+		cout << "Usage : " << argv[0] << " path_to_instance " << endl;
+		return EXIT_FAILURE;
+	}
 	
 	
-	afficheClient(client);
+	if(lectureInstance(argv)==false)
+		EXIT_FAILURE;
+	
+	affiche();
 	
 	cout << endl << "avant tri : " << endl;
-	afficheList(echeance);
+	afficheEcheance(echeance);
 	
 	triList(&echeance);
 	
 	cout << endl << "apres tri : " << endl;
-	afficheList(echeance);
+	afficheEcheance(echeance);
 		
 	//fonction qui grouperai les clients si retourne 0 alors aucun groupe dans cette interval
 	int var = groupList(echeance, 700, 1300);
 	cout << endl << "nombre de groupe : " << var << endl;
-
+	
     return 0;
 }
 
