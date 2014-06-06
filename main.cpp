@@ -1,7 +1,6 @@
 #include <iostream>
-#include <list>		//list
+#include <list>					//list
 #include <boost/tokenizer.hpp>	// parser
-#include <iomanip>      // std::setprecision
 #include <fstream>
 
 using namespace std;
@@ -9,19 +8,18 @@ using namespace std;
 /**
  *  Declaration des variables global
  */
-
-int nbrClient;
-int nbrTrajet;
-float coutTransport;
-int capacite;
-float coutTotal;
+int		nbrClient;
+int		nbrTrajet;
+float	coutTransport;
+int		capacite;
+float	coutTotal = 0;
 
 typedef struct client{
 	int numClient;
 	float distance;
-	float cout;
+	float coutClient;
 }Client;
-list<Client> cl;
+list<Client> listClient;
 
 typedef struct echeance{
 	int i;			//numéro de livraison
@@ -33,8 +31,8 @@ list<TEcheance> echeance;
 typedef struct camion{
 	list<TEcheance> aLivrer;		//numéro de livraison a livrer
 	int numClient;					//numéro de client
-	float coutCamion = 0;				//coutCamion
-	float dateCourte = NULL;				//cout de livraison minimal
+	float coutCamion = 0;			//coutCamion
+	float dateDepart = NULL;		//cout de livraison minimal
 }Camion;
 list<Camion> listCamion;
 
@@ -55,7 +53,7 @@ TEcheance ajoutEcheance(int i, int cli, int di){
  *  afficher la liste "echeance"
  */
 void afficheEcheance(){
-	cout << "i - cli - di" << endl;
+	cout << endl << "--- TABLEAU D ECHEANCE ---" << endl << "i - cli - di" << endl;
 	
 	list<TEcheance>::const_iterator lit=echeance.begin() ;
 	for(;lit!=echeance.end();++lit)
@@ -67,16 +65,17 @@ Camion ajoutCamion(TEcheance echeance){
 	
 	camion.aLivrer.push_back(echeance);
 	camion.numClient = echeance.cli;
-	camion.dateCourte = echeance.di;
+	camion.dateDepart = echeance.di;
 
 	return camion;
 }
 
 void afficheListCamion(){
 	if(!listCamion.empty()){
+		cout << endl << "--- DETAILS DES CAMIONS SUR LE DEPART ---" << endl;
 		list<Camion>::const_iterator cit = listCamion.begin() ;
 		for (;cit != listCamion.end(); cit++) {
-			cout << "Camion du client : " << cit->numClient << " à livrer avant le : " << cit->dateCourte << endl;
+			cout << "Camion du client : " << cit->numClient << " à livrer avant le : " << cit->dateDepart << " d'un coup de : " << cit->coutCamion << endl;
 			list<TEcheance>::const_iterator tit = cit->aLivrer.begin();
 			for (; tit != cit->aLivrer.end(); tit++)
 				cout << "\tdate livraison : " << tit->di << endl ;
@@ -86,36 +85,40 @@ void afficheListCamion(){
 		cout << "Acune livraison a effectuer"<<endl;
 }
 
-Client ajoutClient(int numClient, float cout, float distance){
+Client ajoutClient(int numClient, float coutClient, float distance){
 	Client client;
 	
 	client.numClient = numClient;
 	client.distance = distance;
-	client.cout = cout;
+	client.coutClient = coutClient;
 	
 	return client;
 }
 
 void afficheClient(){
-	if(!cl.empty()){
-		list<Client>::const_iterator cit=cl.begin() ;
-		for(;cit != cl.end();cit++)
-			cout << "Client numero : " << cit->numClient << " cout : " << cit->cout << " distance : " << cit->distance << endl;
+	if(!listClient.empty()){
+		cout << endl << "--- LISTE DES CLIENTS ---" << endl;
+		list<Client>::const_iterator cit=listClient.begin() ;
+		for(;cit != listClient.end();cit++)
+			cout << "Client numero : " << cit->numClient << " cout : " << cit->coutClient << " distance : " << cit->distance << endl;
 	}
 	else
-		cout << "aucun client"<<endl;
+		cout << "Aucun client"<<endl;
 }
 
 void affiche(){
-	
-	cout << "nbrTrajet : " << nbrTrajet <<endl;
-	cout << "nbrClient : " << nbrClient <<endl;
-	cout << "transporteur capaciter : " << capacite <<endl;
-	cout << "cout transport : " << coutTransport <<endl;
+	cout << "--- DONNER DE DEPART ---" << endl;
+	cout << "Nombre de trajet : " << nbrTrajet << endl;
+	cout << "Nombre de client : " << nbrClient << endl;
+	cout << "Capacité de transport : " << capacite <<endl;
+	cout << "Cout transport : " << coutTransport <<endl;
 	
 	afficheClient();
 	afficheEcheance();
 	afficheListCamion();
+	
+	cout << endl << "--- COUT TOTAL ---" << endl << coutTotal << endl;
+
 }
 
 string split( const string & Msg, const string & Separators, int position, int ligne) {
@@ -182,7 +185,9 @@ bool lectureInstance(const char * argv[]){
 	
 	int numCl = 0;
 	float coutTrans = 0.0, distance = 0.0;
-	
+	/**
+	 *  recupere toutes les informations concernant les nbrClient clients
+	 */
 	for( int position = 0; position<nbrClient; position++){
 		if(getline(is, str))
 			numCl = atoi(split(str, ":", 1, -1).c_str() );
@@ -191,9 +196,12 @@ bool lectureInstance(const char * argv[]){
 		}
 		if(getline(is, str))
 			distance = atof(split(str, ":", 1, -1).c_str() );
-		cl.push_back(ajoutClient(numCl, coutTrans, distance));
+		listClient.push_back(ajoutClient(numCl, coutTrans, distance));
 	}
 	
+	/**
+	 *  recupere dans deux chaines les infos concernant les job_customer ainsi que job_due_dates
+	 */
 	string chaine1, chaine2;
 	if(getline(is, str))
 		chaine1 = split(str, ":", 1, -1);
@@ -213,14 +221,14 @@ bool lectureInstance(const char * argv[]){
  *  On recupere en argument une liste d'une structure d'echeance que l'on tri en fonction de la date d'echeance
  *  Puis nous retournons la nouvelle liste
  */
-void triList(list<TEcheance>* echeance){
+void triList(){
 	list<TEcheance> temp;								//créer liste temporaire
 
 	
-	temp.push_front(ajoutEcheance(echeance->begin()->i,echeance->begin()->cli,echeance->begin()->di)) ;	//ajoute le premier element de echeance a la nouvelle liste temp
-	list<TEcheance>::const_iterator lit=echeance->begin();										//initialise le curseur sur le premier element de echeance
+	temp.push_front(ajoutEcheance(echeance.begin()->i,echeance.begin()->cli,echeance.begin()->di)) ;	//ajoute le premier element de echeance a la nouvelle liste temp
+	list<TEcheance>::const_iterator lit=echeance.begin();										//initialise le curseur sur le premier element de echeance
 	lit++;
-	while(lit!=echeance->end()){
+	while(lit!=echeance.end()){
 		int test = 0;
 		for(list<TEcheance>::const_iterator it=temp.begin();it!=temp.end();it++){
 			if(lit->di <= it->di && test == 0){
@@ -235,7 +243,7 @@ void triList(list<TEcheance>* echeance){
 	}
 	//le but étant de créer une nouvelle liste dans laquelle nous y insereront un par un nos element en fonction de la valeur de di
 
-	echeance->assign(temp.begin(), temp.end());				//remplace tous les elements de la liste echeance par la liste temporaire
+	echeance.assign(temp.begin(), temp.end());				//remplace tous les elements de la liste echeance par la liste temporaire
 }
 
 /**
@@ -252,8 +260,8 @@ void defBase(){
 			while(cit != listCamion.end() && test == false) {
 				if (cit->aLivrer.size() < capacite && cit->numClient == lit->cli) {
 					cit->aLivrer.push_back(lit.operator*());
-					if (cit->dateCourte > lit->di)
-						cit->dateCourte = lit->di;
+					if (cit->dateDepart > lit->di)
+						cit->dateDepart = lit->di;
 					test = true;
 				}
 				cit++;
@@ -265,19 +273,103 @@ void defBase(){
 	}
 }
 
-//Fonction qui calcule le coût d'une livraison en fonction de la date à laquelle elle arrive
-//On passe en argument la date, et les numéros de livraisons qu'on a regroupées ensemble
-int coutStockage(int date, list<int> *livraisons) {
-	//On récupère la date due de chaque livraison présente dans la liste.
-	//Pour chaque, on fait la soustraction par la date
-	//On additionne les résultats ensemble au fur et à mesure
-	//Une fois toutes les différences de dâtes parcourues, on multiplie par Beta x le nombre de livraisons
-	//On retourne ce résultat qui est le coût si cette livraison groupée arrive à cette date.
+void triCamion() {
+	list<Camion> temp;												//créer liste temporaire
 	
-	return 1;
+	list<Camion>::const_iterator lit = listCamion.begin();			//initialise le curseur sur le premier element de echeance
+	temp.push_front( lit.operator*() ) ;							//ajoute le premier element de echeance a la nouvelle liste temp
+	lit++;
+	while(lit != listCamion.end()){
+		int test = 0;
+		list<Camion>::const_iterator it = temp.begin();
+		for(;it!=temp.end();it++){
+			if(lit->coutCamion >= it->coutCamion && test == 0){
+				//si nouvel element supérieur ou egal a element liste temporaire alors ajouter juste avant :)
+				temp.insert(it, lit.operator*() );	//ajoute le premier element de echeance a la nouvelle liste temp
+				test = 1;
+			}
+		}
+		if(test==0)
+			temp.push_back( lit.operator*() );
+		lit++;
+	}
+	//le but étant de créer une nouvelle liste dans laquelle nous y insereront un par un nos element en fonction de la valeur de di
+	
+	listCamion.assign(temp.begin(), temp.end());				//remplace tous les elements de la liste echeance par la liste temporaire
 }
 
-//Pour la structure de données, vaut-il mieux partir sur 3 listes donnant chacune une ligne du tableau ?
+float coutStockage(Camion* structCamion, float dateCourte) {
+	float beta = 0;
+	structCamion->coutCamion = 0;
+
+	list<Client>::const_iterator cit = listClient.begin();
+	for (;cit != listClient.end(); cit++)
+		if (cit->numClient == structCamion->numClient) {
+			beta = cit->coutClient;
+	}
+	
+	list<TEcheance>::const_iterator lit = structCamion->aLivrer.begin();
+	for (; lit != structCamion->aLivrer.end(); lit++) {
+		structCamion->coutCamion = (lit->di - structCamion->dateDepart) + structCamion->coutCamion;
+	}
+	structCamion->coutCamion = structCamion->coutCamion * beta ;
+	
+	return structCamion->coutCamion;
+}
+
+void calculCoutTotal() {
+	/**
+	 *  lance le calcul du cout de stockage de chaque camion si il part pour arriver a l'heure
+	 */
+	list<Camion>::iterator cit = listCamion.begin();
+	for (; cit != listCamion.end(); cit++)
+		coutStockage( &cit.operator*(), cit->dateDepart );
+	
+	/**
+	 *  tri la liste de camion en fonction des cout de stockage
+	 */
+	triCamion();
+	
+	//afficheListCamion();
+	
+	/**
+	 *  recupere la distance de chaque client et la stock dans un tableau
+	 */
+	list<Client>::iterator tempClient = listClient.begin();
+	int i=0;
+	float tabDist[nbrClient];
+	
+	for (; tempClient != listClient.end(); tempClient++){
+		tabDist[i] = tempClient->distance;
+		i++;
+	}
+	
+	/**
+	 *  calcul l'horaire de depart de tous les camions
+	 */
+	cit = listCamion.begin();
+	list<Camion>::iterator temp = cit;
+	cit++;
+	
+	for (; cit != listCamion.end(); cit++) {
+		cit->dateDepart = temp->dateDepart - (tabDist[temp->numClient-1] + tabDist[temp->numClient-1]) ;
+		temp = cit;
+	}
+	
+	/**
+	 *  REcalcule le nouveau cout de stockage pour chacun des camions
+	 */
+	cit = listCamion.begin();
+	float calCoutTransport = 0;
+	for (; cit != listCamion.end(); cit++){
+		coutTotal += coutStockage( &cit.operator*(), cit->dateDepart );
+		calCoutTransport += (tabDist[cit->numClient-1]*2);
+		//cout << " cout Total " << coutTotal << " cout transport " << calCoutTransport << endl;
+	}
+	calCoutTransport = coutTransport * calCoutTransport;
+	//cout << "new cout transport " << calCoutTransport << endl;
+	coutTotal += calCoutTransport;
+}
 
 int main(int argc, const char * argv[]) {
 	
@@ -291,19 +383,29 @@ int main(int argc, const char * argv[]) {
 	
 	if(lectureInstance(argv)==false)
 		EXIT_FAILURE;
+		
+	/**
+	 *  ordonne la liste par date d'echeance croissante
+	 */
+	triList();
 	
-	cout << endl << "avant tri : " << endl;
-	afficheEcheance();
-	
-	triList(&echeance);
-	
-	cout << endl << "apres tri : " << endl;
-	afficheEcheance();
-	
+	/**
+	 *  rassemble les clients dans un camion, jusqu'a ce que celui ci soit plein
+	 */
 	defBase();
 	
+	//afficheListCamion();
+
+	calculCoutTotal();
+
+	//afficheListCamion();
+	
+	
+	/**
+	 *  affiche le resutlat
+	 */
 	affiche();
-		
+	
     return 0;
 }
 
