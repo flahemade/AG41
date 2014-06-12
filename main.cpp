@@ -36,6 +36,7 @@ typedef struct camion{
 }Camion;
 list<Camion> listCamion;
 
+
 /**
  *  fonction permettant d'ajouter des valeurs à notre liste d'échancier
  */
@@ -273,7 +274,7 @@ void defBase(){
 	}
 }
 
-void triCamion() {
+void triCamionCoutStockage() {
 	list<Camion> temp;												//créer liste temporaire
 	
 	list<Camion>::const_iterator lit = listCamion.begin();			//initialise le curseur sur le premier element de echeance
@@ -298,16 +299,41 @@ void triCamion() {
 	listCamion.assign(temp.begin(), temp.end());				//remplace tous les elements de la liste echeance par la liste temporaire
 }
 
-float coutStockage(Camion* structCamion, float dateCourte) {
+void calculHoraire(float* tabDist){
+	
+	/**
+	 *  calcul l'horaire de depart de tous les camions
+	 */
+	list<Camion>::iterator cit = listCamion.begin();
+	cit = listCamion.begin();
+	list<Camion>::iterator tempCamionIt = cit;
+	cit++;
+	
+	for (; cit != listCamion.end(); cit++) {
+		cit->dateDepart = tempCamionIt->dateDepart - (tabDist[tempCamionIt->numClient] + tabDist[cit->numClient]) ;
+		tempCamionIt = cit;
+	}
+
+}
+
+float coutStockage(Camion* structCamion) {
 	float beta = 0;
 	structCamion->coutCamion = 0;
 
+	/**
+	 *  récupére le cout à utiliser pour le camion en question
+	 */
 	list<Client>::const_iterator cit = listClient.begin();
-	for (;cit != listClient.end(); cit++)
+	for (;cit != listClient.end(); cit++){
 		if (cit->numClient == structCamion->numClient) {
 			beta = cit->coutClient;
+			break;
+		}
 	}
 	
+	/**
+	 *  
+	 */
 	list<TEcheance>::const_iterator lit = structCamion->aLivrer.begin();
 	for (; lit != structCamion->aLivrer.end(); lit++) {
 		structCamion->coutCamion = (lit->di - structCamion->dateDepart) + structCamion->coutCamion;
@@ -317,26 +343,12 @@ float coutStockage(Camion* structCamion, float dateCourte) {
 	return structCamion->coutCamion;
 }
 
-void calculCoutTotal() {
+void ordrePassage() {
 	/**
-	 *  lance le calcul du cout de stockage de chaque camion si il part pour arriver a l'heure
-	 */
-	list<Camion>::iterator cit = listCamion.begin();
-	for (; cit != listCamion.end(); cit++)
-		coutStockage( &cit.operator*(), cit->dateDepart );
-	
-	/**
-	 *  tri la liste de camion en fonction des cout de stockage
-	 */
-	triCamion();
-	
-	//afficheListCamion();
-	
-	/**
-	 *  recupere la distance de chaque client et la stock dans un tableau
+	 *  Recupere la distance de chaque client et la stock dans un tableau
 	 */
 	list<Client>::iterator tempClient = listClient.begin();
-	int i=0;
+	int i=1;
 	float tabDist[nbrClient];
 	
 	for (; tempClient != listClient.end(); tempClient++){
@@ -344,30 +356,55 @@ void calculCoutTotal() {
 		i++;
 	}
 	
+	list<Camion> tempEssai;
+	list<Camion>::iterator cit = listCamion.begin();
+
+	
 	/**
-	 *  calcul l'horaire de depart de tous les camions
+	 *  Pour chaque choix de camion fais on vérifie quel prochain choisir
 	 */
-	cit = listCamion.begin();
-	list<Camion>::iterator temp = cit;
-	cit++;
-	
-	for (; cit != listCamion.end(); cit++) {
-		cit->dateDepart = temp->dateDepart - (tabDist[temp->numClient-1] + tabDist[temp->numClient-1]) ;
-		temp = cit;
+	while (!listCamion.empty()) {
+		/**
+		 *  lance le calcul du cout de stockage de chaque camion si il part pour arriver a l'heure
+		 */
+		for (; cit != listCamion.end(); cit++)
+			coutStockage( &cit.operator*() );
+		
+		/**
+		 *  Tri la liste de camion en fonction des couts de stockage
+		 */
+		triCamionCoutStockage();
+		
+		
+		Camion tempCamion = listCamion.front();
+		
+		calculHoraire(tabDist);
+		
+		/**
+		 *  Calcule le nouveau cout de stockage pour chacun des camions
+		 */
+		cit = listCamion.begin();
+		for (; cit != listCamion.end(); cit++){
+			coutStockage( &cit.operator*() );
+		}
+		
+		listCamion.pop_front();
+		tempEssai.push_back(tempCamion);
 	}
+	listCamion.assign(tempEssai.begin(), tempEssai.end());
 	
 	/**
-	 *  REcalcule le nouveau cout de stockage pour chacun des camions
+	 *  calcule le nouveau cout de stockage et de transport pour chacun des camions
 	 */
 	cit = listCamion.begin();
 	float calCoutTransport = 0;
 	for (; cit != listCamion.end(); cit++){
-		coutTotal += coutStockage( &cit.operator*(), cit->dateDepart );
-		calCoutTransport += (tabDist[cit->numClient-1]*2);
-		//cout << " cout Total " << coutTotal << " cout transport " << calCoutTransport << endl;
+		coutTotal += coutStockage( &cit.operator*() );
+		calCoutTransport += (tabDist[cit->numClient]*2);
+		cout << " cout Total " << coutTotal << " cout transport " << calCoutTransport << endl;
 	}
 	calCoutTransport = coutTransport * calCoutTransport;
-	//cout << "new cout transport " << calCoutTransport << endl;
+	cout << "new cout transport " << calCoutTransport << endl;
 	coutTotal += calCoutTransport;
 }
 
@@ -388,19 +425,13 @@ int main(int argc, const char * argv[]) {
 	 *  ordonne la liste par date d'echeance croissante
 	 */
 	triList();
-	
+
 	/**
 	 *  rassemble les clients dans un camion, jusqu'a ce que celui ci soit plein
 	 */
 	defBase();
-	
-	//afficheListCamion();
 
-	calculCoutTotal();
-
-	//afficheListCamion();
-	
-	
+	ordrePassage();
 	/**
 	 *  affiche le resutlat
 	 */
