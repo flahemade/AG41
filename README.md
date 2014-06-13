@@ -15,4 +15,4 @@ TODO :
 	 *  On peut aussi les résumer à un tableau de distances dont l'index donnerait la distance A/R à un client.
 	*/
 	
-	- Chercher livraison à effectuer dans un camion a part
+	- Chercher livraison à effectuer dans un camion existant

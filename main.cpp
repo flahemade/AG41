@@ -1,46 +1,55 @@
 #include <iostream>
 #include <list>					//list
 #include <boost/tokenizer.hpp>	// parser
+#include <iomanip>				// std::setprecision
 #include <fstream>
+#include <sys/time.h>
 
 using namespace std;
 
 /**
  *  Declaration des variables global
  */
+double texec=0.;
+
 int		nbrClient;
 int		nbrTrajet;
-float	coutTransport;
 int		capacite;
-float	coutTotal = 0;
+double	coutTransport = 0;		//cout de transport
+
 
 typedef struct client{
 	int numClient;
-	float distance;
-	float coutClient;
+	double distance;
+	double coutClient;
 }Client;
 list<Client> listClient;
 
 typedef struct echeance{
 	int i;			//numéro de livraison
 	int cli;		//numéro de client
-	float di;		//echeance
+	double di;		//echeance
 }TEcheance;
 list<TEcheance> echeance;
 
 typedef struct camion{
 	list<TEcheance> aLivrer;		//numéro de livraison a livrer
 	int numClient;					//numéro de client
-	float coutCamion = 0;			//coutCamion
-	float dateDepart = NULL;		//cout de livraison minimal
-}Camion;
-list<Camion> listCamion;
+	double	dateDepart = NULL;		//date départ initier à null
+	double	coutCamion = 0;			//cout de stockage
 
+}Camion;
+
+typedef struct solution{
+	list<Camion> listLivraison;
+	double	coutTotal = 0;			//inclu le cout de stockage et le cout de transport
+}bestSolution;
+solution best_eval;
 
 /**
  *  fonction permettant d'ajouter des valeurs à notre liste d'échancier
  */
-TEcheance ajoutEcheance(int i, int cli, int di){
+TEcheance ajoutEcheance(int i, double cli, double di){
 	TEcheance temp;
 	
 	temp.i = i;
@@ -72,21 +81,21 @@ Camion ajoutCamion(TEcheance echeance){
 }
 
 void afficheListCamion(){
-	if(!listCamion.empty()){
+	if(!best_eval.listLivraison.empty()){
 		cout << endl << "--- DETAILS DES CAMIONS SUR LE DEPART ---" << endl;
-		list<Camion>::const_iterator cit = listCamion.begin() ;
-		for (;cit != listCamion.end(); cit++) {
-			cout << "Camion du client : " << cit->numClient << " à livrer avant le : " << cit->dateDepart << " d'un coup de : " << cit->coutCamion << endl;
+		list<Camion>::const_iterator cit = best_eval.listLivraison.begin() ;
+		for (;cit != best_eval.listLivraison.end(); cit++) {
+			cout << "Camion du client : " << cit->numClient << " à livrer avant le : " << cit->dateDepart << "\td'un coup de : " << cit->coutCamion << endl;
 			list<TEcheance>::const_iterator tit = cit->aLivrer.begin();
 			for (; tit != cit->aLivrer.end(); tit++)
-				cout << "\tdate livraison : " << tit->di << endl ;
+				cout << "\tDate livraison : " << tit->di << endl ;
 		}
 	}
 	else
 		cout << "Acune livraison a effectuer"<<endl;
 }
 
-Client ajoutClient(int numClient, float coutClient, float distance){
+Client ajoutClient(int numClient, double coutClient, double distance){
 	Client client;
 	
 	client.numClient = numClient;
@@ -118,8 +127,9 @@ void affiche(){
 	afficheEcheance();
 	afficheListCamion();
 	
-	cout << endl << "--- COUT TOTAL ---" << endl << coutTotal << endl;
+	std::cout << endl << "Execution time : " << setprecision(10) << texec << " sec" ;
 	
+	cout << endl << "--- COUT TOTAL ---" << endl << setprecision(10) << best_eval.coutTotal << endl;
 }
 
 string split( const string & Msg, const string & Separators, int position, int ligne) {
@@ -184,8 +194,8 @@ bool lectureInstance(const char * argv[]){
 		ligne++;
 	}
 	
-	int numCl = 0;
-	float coutTrans = 0.0, distance = 0.0;
+	int numCl = -1;
+	double coutTrans = -1, distance = -1;
 	/**
 	 *  recupere toutes les informations concernant les nbrClient clients
 	 */
@@ -200,6 +210,11 @@ bool lectureInstance(const char * argv[]){
 		listClient.push_back(ajoutClient(numCl, coutTrans, distance));
 	}
 	
+	if (numCl == -1 || coutTrans == -1 || distance == -1) {
+		cout << "Erreur lors de la récupération des informations des clients" << endl;
+		EXIT_FAILURE;
+	}
+	
 	/**
 	 *  recupere dans deux chaines les infos concernant les job_customer ainsi que job_due_dates
 	 */
@@ -208,11 +223,9 @@ bool lectureInstance(const char * argv[]){
 		chaine1 = split(str, ":", 1, -1);
 	if(getline(is, str))
 		chaine2 = split(str, ":", 1, -1);
-	
-	//cout << "test " << split(chaine2, ";",3, -1 ) << " --> " << setprecision(17) << atof(split(chaine2, ";",3, -1 ).c_str()) << endl << endl;
-	
+		
 	for(int i=0; i<nbrTrajet;i++)
-		echeance.push_back(ajoutEcheance(i, atof(split(chaine1, ";",i, -1 ).c_str() ), atof(split(chaine2, ";",i, -1 ).c_str()) ) );
+		echeance.push_back(ajoutEcheance(i, strtold(split(chaine1, ";",i, -1 ).c_str(), NULL),strtold(split(chaine2, ";",i, -1 ).c_str(), NULL)));
 	
 	return true;
 }
@@ -253,12 +266,12 @@ void triList(){
 void defBase(){
 	list<TEcheance>::const_iterator lit = echeance.begin();
 	for (;lit != echeance.end();lit++){
-		if (listCamion.empty())
-			listCamion.push_back( ajoutCamion( lit.operator*() ));
+		if (best_eval.listLivraison.empty())
+			best_eval.listLivraison.push_back( ajoutCamion( lit.operator*() ));
 		else {
-			list<Camion>::iterator cit = listCamion.begin();
+			list<Camion>::iterator cit = best_eval.listLivraison.begin();
 			bool test = false;
-			while(cit != listCamion.end() && test == false) {
+			while(cit != best_eval.listLivraison.end() && test == false) {
 				if (cit->aLivrer.size() < capacite && cit->numClient == lit->cli) {
 					cit->aLivrer.push_back(lit.operator*());
 					if (cit->dateDepart > lit->di)
@@ -268,19 +281,19 @@ void defBase(){
 				cit++;
 			}
 			if (!test) {
-				listCamion.push_back( ajoutCamion( lit.operator*() ));
+				best_eval.listLivraison.push_back( ajoutCamion( lit.operator*() ));
 			}
 		}
 	}
 }
 
-void triCamionCoutStockage() {
+void triCamionCoutStockage(solution* soluce) {
 	list<Camion> temp;												//créer liste temporaire
 	
-	list<Camion>::const_iterator lit = listCamion.begin();			//initialise le curseur sur le premier element de echeance
+	list<Camion>::const_iterator lit = soluce->listLivraison.begin();			//inijijiiihitialise le curseur sur le premier element de echeance
 	temp.push_front( lit.operator*() ) ;							//ajoute le premier element de echeance a la nouvelle liste temp
 	lit++;
-	while(lit != listCamion.end()){
+	while(lit != soluce->listLivraison.end()){
 		int test = 0;
 		list<Camion>::const_iterator it = temp.begin();
 		for(;it!=temp.end();it++){
@@ -296,26 +309,26 @@ void triCamionCoutStockage() {
 	}
 	//le but étant de créer une nouvelle liste dans laquelle nous y insereront un par un nos element en fonction de la valeur de di
 	
-	listCamion.assign(temp.begin(), temp.end());				//remplace tous les elements de la liste echeance par la liste temporaire
+	soluce->listLivraison.assign(temp.begin(), temp.end());			//remplace tous les elements de la liste echeance par la liste temporaire
 }
 
-void calculHoraire(float* tabDist){
+void calculHoraire(double* tabDist, solution* soluce){
 	/**
 	 *  calcul l'horaire de depart de tous les camions
 	 */
-	list<Camion>::iterator cit = listCamion.begin();
-	cit = listCamion.begin();
+	list<Camion>::iterator cit = soluce->listLivraison.begin();
+	cit = soluce->listLivraison.begin();
 	list<Camion>::iterator tempCamionIt = cit;
 	cit++;
 	
-	for (; cit != listCamion.end(); cit++) {
+	for (; cit != soluce->listLivraison.end(); cit++) {
 		cit->dateDepart = tempCamionIt->dateDepart - (tabDist[tempCamionIt->numClient] + tabDist[cit->numClient]) ;
 		tempCamionIt = cit;
 	}
 }
 
-float coutStockage(Camion* structCamion) {
-	float beta = 0;
+double coutStockage(Camion* structCamion) {
+	double beta = 0;
 	structCamion->coutCamion = 0;
 	
 	/**
@@ -341,8 +354,8 @@ float coutStockage(Camion* structCamion) {
 	return structCamion->coutCamion;
 }
 
-float coutStockage(Camion* structCamion, float date) {
-	float beta = 0;
+double coutStockage(Camion* structCamion, double date) {
+	double beta = 0;
 	structCamion->coutCamion = 0;
 	
 	/**
@@ -368,20 +381,20 @@ float coutStockage(Camion* structCamion, float date) {
 	return structCamion->coutCamion;
 }
 
-void ordrePassage(float* tabDist) {
+void ordrePassage(double* tabDist) {
 	list<Camion> tempEssai;
 	int date = -1;
 	/**
 	 *  Pour chaque choix de camion fais on vérifie quel prochain choisir
 	 */
-	while (!listCamion.empty()) {
-		list<Camion>::iterator cit = listCamion.begin();
-		list<Camion>::iterator temporaire = listCamion.begin();
+	while (!best_eval.listLivraison.empty()) {
+		list<Camion>::iterator cit = best_eval.listLivraison.begin();
+		list<Camion>::iterator temporaire = best_eval.listLivraison.begin();
 		
 		/**
 		 *  lance le calcul du cout de stockage de chaque camion si il part pour arriver a l'heure
 		 */
-		for (; cit != listCamion.end(); cit++){
+		for (; cit != best_eval.listLivraison.end(); cit++){
 			if(date == -1)
 				coutStockage( &cit.operator*() );
 			else
@@ -391,20 +404,20 @@ void ordrePassage(float* tabDist) {
 		/**
 		 *  Tri la liste de camion en fonction des couts de stockage
 		 */
-		triCamionCoutStockage();
+		triCamionCoutStockage(&best_eval);
 
 		if (date == -1)
-			calculHoraire(tabDist);
+			calculHoraire(tabDist, &best_eval);
 		else {
 			/**
 			 *  calcul l'horaire de depart de tous les camions
 			 */
-			cit = listCamion.begin();
+			cit = best_eval.listLivraison.begin();
 			cit->dateDepart=date;
 			list<Camion>::iterator tempCamionIt = cit;
 			cit++;
 			
-			for (; cit != listCamion.end(); cit++) {
+			for (; cit != best_eval.listLivraison.end(); cit++) {
 				cit->dateDepart = tempCamionIt->dateDepart - (tabDist[tempCamionIt->numClient] + tabDist[cit->numClient]) ;
 				tempCamionIt = cit;
 			}
@@ -413,51 +426,73 @@ void ordrePassage(float* tabDist) {
 		/**
 		 *  Calcule le nouveau cout de stockage pour chacun des camions
 		 */
-		Camion tempCamion = listCamion.front();
-		cit = listCamion.begin();
-		for (; cit != listCamion.end(); cit++){
+		Camion tempCamion = best_eval.listLivraison.front();
+		cit = best_eval.listLivraison.begin();
+		for (; cit != best_eval.listLivraison.end(); cit++){
 			coutStockage( &cit.operator*(), temporaire->dateDepart );
 		}
-		listCamion.pop_front();
-		cit = listCamion.begin();
+		best_eval.listLivraison.pop_front();
+		cit = best_eval.listLivraison.begin();
 		date = cit->dateDepart;
 		tempEssai.push_back(tempCamion);
 	}
-	listCamion.assign(tempEssai.begin(), tempEssai.end());
+	best_eval.listLivraison.assign(tempEssai.begin(), tempEssai.end());
 }
 
 /**
  *  calcule le nouveau cout de stockage et de transport pour chacun des camions
  */
-void calculeTotal(float* tabDist){
-	list<Camion>::iterator cit = listCamion.begin();
-	float calCoutTransport = 0;
+void calculeTotal(double* tabDist, solution* soluce){
+	list<Camion>::iterator cit = soluce->listLivraison.begin();
+	double calCoutTransport = 0;
 	
-	for (; cit != listCamion.end(); cit++){
-		coutTotal += coutStockage( &cit.operator*() );
+	for (; cit != soluce->listLivraison.end(); cit++){
+		soluce->coutTotal += coutStockage( &cit.operator*() );
 		calCoutTransport += (tabDist[cit->numClient]*2);
 	}
 	calCoutTransport = coutTransport * calCoutTransport;
-	coutTotal += calCoutTransport;
+	soluce->coutTotal += calCoutTransport;
+	cout << "alors : " << soluce->coutTotal << endl;
+	if (soluce->coutTotal <= best_eval.coutTotal) {
+		best_eval.listLivraison = soluce->listLivraison ;
+		coutTransport = coutTransport;
+		best_eval.coutTotal = soluce->coutTotal;
+	}
 }
 
-bool testListCamion(float* tabDist){
-	list<Camion>::iterator cit = listCamion.begin();
+/**
+ *  calcule la premiere heuristique de base
+ */
+void calculeTotal(double* tabDist){
+	list<Camion>::iterator cit = best_eval.listLivraison.begin();
+	double calCoutTransport = 0;
+	
+	for (; cit != best_eval.listLivraison.end(); cit++){
+		best_eval.coutTotal += coutStockage( &cit.operator*() );
+		calCoutTransport += (tabDist[cit->numClient]*2);
+	}
+	calCoutTransport = coutTransport * calCoutTransport;
+	best_eval.coutTotal += calCoutTransport;
+}
+
+bool testListCamion(double* tabDist, solution* soluce){
+	list<Camion>::iterator cit = soluce->listLivraison.begin();
 	int dateFirst = cit->dateDepart;
 	int numClientFirst = cit->numClient;
 
-	for (; cit != listCamion.end(); cit++) {
+	for (; cit != soluce->listLivraison.end(); cit++) {
 		list<TEcheance>::const_iterator lit = cit->aLivrer.begin();
 		for (; lit != cit->aLivrer.end(); lit++) {
 
 			if (lit->di > ( dateFirst + tabDist[numClientFirst] + tabDist[lit->cli] ) ){
-				listCamion.push_front( ajoutCamion(lit.operator*() ));
+				
+				soluce->listLivraison.push_front( ajoutCamion(lit.operator*() ));
 				cit->aLivrer.erase( lit );
 				
 				/**
 				 *  remise a zero du test
 				 */
-				list<Camion>::iterator temp = listCamion.begin();
+				list<Camion>::iterator temp = soluce->listLivraison.begin();
 				dateFirst = temp->dateDepart;
 				numClientFirst = temp->numClient;
 				
@@ -469,7 +504,7 @@ bool testListCamion(float* tabDist){
 }
 
 int main(int argc, const char * argv[]) {
-	
+	solution soluce;
 	/**
 	 *  on passe en argument de ligne de commande le chemin vers le fichier décrivant l'instance
 	 */
@@ -480,6 +515,14 @@ int main(int argc, const char * argv[]) {
 	
 	if(lectureInstance(argv)==false)
 		EXIT_FAILURE;
+	
+	/**
+	 *  Mise en place d'un compteur de temps
+	 */
+    struct timeval tbegin,tend;
+	
+    // Lancement du chronométre
+    gettimeofday(&tbegin,NULL);
 	
 	/**
 	 *  ordonne la liste par date d'echeance croissante
@@ -496,27 +539,40 @@ int main(int argc, const char * argv[]) {
 	 */
 	list<Client>::iterator tempClient = listClient.begin();
 	int i=1;
-	float tabDist[nbrClient];
+	double tabDist[nbrClient];
 	
 	for (; tempClient != listClient.end(); tempClient++){
 		tabDist[i] = tempClient->distance;
 		i++;
 	}
-
+	
 	/**
 	 *  définie un premier ordre de passage en fonction du groupement des camions
 	 */
 	ordrePassage(tabDist);
-		
+	
+	/**
+	 *  calcul le total de notre heuristique de base
+	 */
+	calculeTotal(tabDist);
+	soluce = best_eval;
+	
+	
 	/**
 	 *  si nous avons une livraison à faire en dehors des camions déjà existant alors créer un camion pour cette livraison
 	 */
-	testListCamion(tabDist);
-
+	testListCamion(tabDist, &soluce);
+	
 	/**
 	 *  Calcule le cout total de notre solution
 	 */
-	calculeTotal(tabDist);
+	calculeTotal(tabDist, &soluce);
+
+	
+	// Arret du chronométre
+    gettimeofday(&tend,NULL);
+    texec=((double)(1000*(tend.tv_sec-tbegin.tv_sec)+((tend.tv_usec-tbegin.tv_usec)/1000)))/1000.;
+
 	
 	/**
 	 *  affiche le resutlat
