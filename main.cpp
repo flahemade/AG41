@@ -445,6 +445,7 @@ void ordrePassage(double* tabDist) {
 void calculeTotal(double* tabDist, solution* soluce){
 	list<Camion>::iterator cit = soluce->listLivraison.begin();
 	double calCoutTransport = 0;
+	soluce->coutTotal = 0;
 	
 	for (; cit != soluce->listLivraison.end(); cit++){
 		soluce->coutTotal += coutStockage( &cit.operator*() );
@@ -452,7 +453,19 @@ void calculeTotal(double* tabDist, solution* soluce){
 	}
 	calCoutTransport = coutTransport * calCoutTransport;
 	soluce->coutTotal += calCoutTransport;
-	cout << "alors : " << soluce->coutTotal << endl;
+	
+	
+	cout << "resultat calculer : " << endl;
+	list<Camion>::const_iterator scit = soluce->listLivraison.begin() ;
+	for (;scit != soluce->listLivraison.end(); scit++) {
+		cout << "Camion du client : " << scit->numClient << " à livrer avant le : " << scit->dateDepart << "\td'un coup de : " << scit->coutCamion << endl;
+		list<TEcheance>::const_iterator tit = scit->aLivrer.begin();
+		for (; tit != scit->aLivrer.end(); tit++)
+			cout << "\tDate livraison : " << tit->di << endl ;
+	}
+	cout << endl << "--- COUT TOTAL ---" << endl << setprecision(10) << soluce->coutTotal << endl;
+	cout << endl << endl ;
+	
 	if (soluce->coutTotal <= best_eval.coutTotal) {
 		best_eval.listLivraison = soluce->listLivraison ;
 		coutTransport = coutTransport;
@@ -475,32 +488,44 @@ void calculeTotal(double* tabDist){
 	best_eval.coutTotal += calCoutTransport;
 }
 
-bool testListCamion(double* tabDist, solution* soluce){
-	list<Camion>::iterator cit = soluce->listLivraison.begin();
+void testListCamion(double* tabDist, solution soluce){
+	
+	list<Camion>::iterator cit = soluce.listLivraison.begin();
 	int dateFirst = cit->dateDepart;
 	int numClientFirst = cit->numClient;
-
-	for (; cit != soluce->listLivraison.end(); cit++) {
+	int i = 0, j = 0;
+	
+	for (; cit != soluce.listLivraison.end(); cit++) {
 		list<TEcheance>::const_iterator lit = cit->aLivrer.begin();
+		j = 0;
 		for (; lit != cit->aLivrer.end(); lit++) {
-
 			if (lit->di > ( dateFirst + tabDist[numClientFirst] + tabDist[lit->cli] ) ){
-				
-				soluce->listLivraison.push_front( ajoutCamion(lit.operator*() ));
-				cit->aLivrer.erase( lit );
+				solution copySoluce = soluce;
+				copySoluce.listLivraison.assign(soluce.listLivraison.begin(), soluce.listLivraison.end());
+
+				list<Camion>::iterator ccit = copySoluce.listLivraison.begin();
+				for (int x=0; x<i; x++) {
+					ccit++;
+				}
+				list<TEcheance>::const_iterator clit = ccit->aLivrer.begin();
+				for	(int y=0; y<j; y++) {
+					clit++;
+				}
+
+				copySoluce.listLivraison.push_front( ajoutCamion(clit.operator*() ));
+				ccit->aLivrer.erase( clit );
 				
 				/**
-				 *  remise a zero du test
+				 *  Calcule le cout total de notre solution
 				 */
-				list<Camion>::iterator temp = soluce->listLivraison.begin();
-				dateFirst = temp->dateDepart;
-				numClientFirst = temp->numClient;
-				
-				return true;
+				calculeTotal(tabDist, &copySoluce);
+
+				testListCamion(tabDist, copySoluce);
 			}
+			j++;
 		}
+		i++;
 	}
-	return false;
 }
 
 int main(int argc, const char * argv[]) {
@@ -551,23 +576,18 @@ int main(int argc, const char * argv[]) {
 	 */
 	ordrePassage(tabDist);
 	
+	
 	/**
 	 *  calcul le total de notre heuristique de base
 	 */
 	calculeTotal(tabDist);
 	soluce = best_eval;
 	
-	
 	/**
 	 *  si nous avons une livraison à faire en dehors des camions déjà existant alors créer un camion pour cette livraison
 	 */
-	testListCamion(tabDist, &soluce);
+	testListCamion(tabDist, soluce);
 	
-	/**
-	 *  Calcule le cout total de notre solution
-	 */
-	calculeTotal(tabDist, &soluce);
-
 	
 	// Arret du chronométre
     gettimeofday(&tend,NULL);
