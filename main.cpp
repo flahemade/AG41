@@ -23,7 +23,7 @@ list<Client> listClient;
 
 typedef struct echeance{
 	int i;			//numéro de livraison
-	float cli;		//numéro de client
+	int cli;		//numéro de client
 	float di;		//echeance
 }TEcheance;
 list<TEcheance> echeance;
@@ -343,19 +343,7 @@ float coutStockage(Camion* structCamion) {
 	return structCamion->coutCamion;
 }
 
-void ordrePassage() {
-	/**
-	 *  Recupere la distance de chaque client et la stock dans un tableau
-	 */
-	list<Client>::iterator tempClient = listClient.begin();
-	int i=1;
-	float tabDist[nbrClient];
-	
-	for (; tempClient != listClient.end(); tempClient++){
-		tabDist[i] = tempClient->distance;
-		i++;
-	}
-	
+void ordrePassage(float* tabDist) {
 	list<Camion> tempEssai;
 	list<Camion>::iterator cit = listCamion.begin();
 
@@ -392,12 +380,15 @@ void ordrePassage() {
 		tempEssai.push_back(tempCamion);
 	}
 	listCamion.assign(tempEssai.begin(), tempEssai.end());
-	
-	/**
-	 *  calcule le nouveau cout de stockage et de transport pour chacun des camions
-	 */
-	cit = listCamion.begin();
+}
+
+/**
+ *  calcule le nouveau cout de stockage et de transport pour chacun des camions
+ */
+void calculeTotal(float* tabDist){
+	list<Camion>::iterator cit = listCamion.begin();
 	float calCoutTransport = 0;
+	
 	for (; cit != listCamion.end(); cit++){
 		coutTotal += coutStockage( &cit.operator*() );
 		calCoutTransport += (tabDist[cit->numClient]*2);
@@ -406,6 +397,31 @@ void ordrePassage() {
 	calCoutTransport = coutTransport * calCoutTransport;
 	cout << "new cout transport " << calCoutTransport << endl;
 	coutTotal += calCoutTransport;
+}
+
+bool testListCamion(float* tabDist){
+	list<Camion>::iterator cit = listCamion.begin();
+	int dateFirst = cit->dateDepart;
+	int numClientFirst = cit->numClient;
+	for (; cit != listCamion.end(); cit++) {
+		list<TEcheance>::const_iterator lit = cit->aLivrer.begin();
+		for (; lit != cit->aLivrer.end(); lit++) {
+			if (lit->di > ( dateFirst + tabDist[numClientFirst] + tabDist[lit->cli] ) ){
+				listCamion.push_front( ajoutCamion(lit.operator*() ));
+				cit->aLivrer.erase( lit );
+				
+				/**
+				 *  remise a zero du test
+				 */
+				list<Camion>::iterator temp = listCamion.begin();
+				dateFirst = temp->dateDepart;
+				numClientFirst = temp->numClient;
+				
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 int main(int argc, const char * argv[]) {
@@ -417,7 +433,7 @@ int main(int argc, const char * argv[]) {
 		cout << "Usage : " << argv[0] << " path_to_instance " << endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	if(lectureInstance(argv)==false)
 		EXIT_FAILURE;
 		
@@ -431,7 +447,37 @@ int main(int argc, const char * argv[]) {
 	 */
 	defBase();
 
-	ordrePassage();
+	afficheListCamion();
+	
+	/**
+	 *  Recupere la distance de chaque client et la stock dans un tableau
+	 */
+	list<Client>::iterator tempClient = listClient.begin();
+	int i=1;
+	float tabDist[nbrClient];
+	
+	for (; tempClient != listClient.end(); tempClient++){
+		tabDist[i] = tempClient->distance;
+		i++;
+	}
+	
+	/**
+	 *  définie un premier ordre de passage en fonction du groupement des camions
+	 */
+	ordrePassage(tabDist);
+	
+	afficheListCamion();
+	
+	/**
+	 *  si nous avons une livraison à faire en dehors des camions déjà existant alors créer un camion pour cette livraison
+	 */
+	testListCamion(tabDist);
+	
+	/**
+	 *  Calcule le cout total de notre solution
+	 */
+	calculeTotal(tabDist);
+	
 	/**
 	 *  affiche le resutlat
 	 */
