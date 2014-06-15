@@ -1,50 +1,4 @@
-#include <iostream>
-#include <list>					//list
-#include <boost/tokenizer.hpp>	// parser
-#include <iomanip>				// std::setprecision
-#include <fstream>
-#include <sys/time.h>
-
-using namespace std;
-
-/**
- *  Declaration des variables global
- */
-double texec=0.;
-
-int		nbrClient;
-int		nbrTrajet;
-int		capacite;
-double	coutTransport = 0;		//cout de transport
-
-
-typedef struct client{
-	int numClient;
-	double distance;
-	double coutClient;
-}Client;
-list<Client> listClient;
-
-typedef struct echeance{
-	int i;			//numéro de livraison
-	int cli;		//numéro de client
-	double di;		//echeance
-}TEcheance;
-list<TEcheance> echeance;
-
-typedef struct camion{
-	list<TEcheance> aLivrer;		//numéro de livraison a livrer
-	int numClient;					//numéro de client
-	double	dateDepart = NULL;		//date départ initier à null
-	double	coutCamion = 0;			//cout de stockage
-
-}Camion;
-
-typedef struct solution{
-	list<Camion> listLivraison;
-	double	coutTotal = 0;			//inclu le cout de stockage et le cout de transport
-}bestSolution;
-solution best_eval;
+#include "main.hpp"
 
 /**
  *  fonction permettant d'ajouter des valeurs à notre liste d'échancier
@@ -128,7 +82,7 @@ void affiche(){
 	afficheEcheance();
 	afficheListCamion();
 	
-	std::cout << endl << "Execution time : " << setprecision(10) << texec << " sec" << endl;
+	std::cout << endl << "Execution time : " << setprecision(10) << texec << "sec" << endl;
 }
 
 string split( const string & Msg, const string & Separators, int position, int ligne) {
@@ -229,21 +183,32 @@ bool lectureInstance(const char * argv[]){
 	return true;
 }
 
+void distanceClient(){
+	list<Client>::iterator tempClient = listClient.begin();
+	int i=1;
+	tabDist = new double[nbrClient+1];
+	
+	for (; tempClient != listClient.end(); tempClient++){
+		tabDist[i] = tempClient->distance;
+		i++;
+	}
+}
+
 /**
  *  Fonction tri par date
  *  On recupere en argument une liste d'une structure d'echeance que l'on tri en fonction de la date d'echeance
  *  Puis nous retournons la nouvelle liste
  */
 void triList(){
+	
 	list<TEcheance> temp;								//créer liste temporaire
-	
-	
 	temp.push_front(ajoutEcheance(echeance.begin()->i,echeance.begin()->cli,echeance.begin()->di)) ;	//ajoute le premier element de echeance a la nouvelle liste temp
 	list<TEcheance>::const_iterator lit=echeance.begin();										//initialise le curseur sur le premier element de echeance
+	list<TEcheance>::const_iterator it=temp.begin();
 	lit++;
 	while(lit!=echeance.end()){
 		int test = 0;
-		for(list<TEcheance>::const_iterator it=temp.begin();it!=temp.end();it++){
+		for(;it!=temp.end();it++){
 			if(lit->di <= it->di && test == 0){
 				//si nouvel element supérieur ou egal a element liste temporaire alors ajouter juste avant :)
 				temp.insert(it, ajoutEcheance(lit->i,lit->cli,lit->di) );	//ajoute le premier element de echeance a la nouvelle liste temp
@@ -264,11 +229,12 @@ void triList(){
  */
 void defBase(){
 	list<TEcheance>::const_iterator lit = echeance.begin();
+	list<Camion>::iterator cit;
 	for (;lit != echeance.end();lit++){
 		if (best_eval.listLivraison.empty())
 			best_eval.listLivraison.push_back( ajoutCamion( lit.operator*() ));
 		else {
-			list<Camion>::iterator cit = best_eval.listLivraison.begin();
+			cit = best_eval.listLivraison.begin();
 			bool test = false;
 			while(cit != best_eval.listLivraison.end() && test == false) {
 				if (cit->aLivrer.size() < capacite && cit->numClient == lit->cli) {
@@ -287,14 +253,14 @@ void defBase(){
 }
 
 void triCamionCoutStockage(solution* soluce) {
-	list<Camion> temp;												//créer liste temporaire
-	
-	list<Camion>::const_iterator lit = soluce->listLivraison.begin();			//inijijiiihitialise le curseur sur le premier element de echeance
-	temp.push_front( lit.operator*() ) ;							//ajoute le premier element de echeance a la nouvelle liste temp
+	list<Camion> temp;													//créer liste temporaire
+	list<Camion>::const_iterator lit = soluce->listLivraison.begin();	//initialise le curseur sur le premier element de echeance
+	list<Camion>::const_iterator it;
+	temp.push_front( lit.operator*() ) ;								//ajoute le premier element de echeance a la nouvelle liste temp
 	lit++;
 	while(lit != soluce->listLivraison.end()){
 		int test = 0;
-		list<Camion>::const_iterator it = temp.begin();
+		it = temp.begin();
 		for(;it!=temp.end();it++){
 			if(lit->coutCamion >= it->coutCamion && test == 0){
 				//si nouvel element supérieur ou egal a element liste temporaire alors ajouter juste avant :)
@@ -368,7 +334,7 @@ double coutStockage(Camion* structCamion, double date) {
 /**
  *  calcule l'heuristique de base
  */
-void calculeTotal(double* tabDist){
+void calculeTotal(){
 	list<Camion>::iterator cit = best_eval.listLivraison.begin();
 	double calCoutTransport = 0;
 	
@@ -383,7 +349,7 @@ void calculeTotal(double* tabDist){
 /**
  *  calcule le cout de stockage et de transport de cette heuristique, si meilleur que notre précédente heuristique alors on l'enregistre
  */
-void calculeTotal(double* tabDist, solution* soluce){
+void calculeTotal(solution* soluce){
 	list<Camion>::iterator cit = soluce->listLivraison.begin();
 	double calCoutTransport = 0;
 	soluce->coutTotal = 0;
@@ -395,7 +361,7 @@ void calculeTotal(double* tabDist, solution* soluce){
 	calCoutTransport = coutTransport * calCoutTransport;
 	soluce->coutTotal += calCoutTransport;
 	
-	if (soluce->coutTotal <= best_eval.coutTotal){
+	if (soluce->coutTotal < best_eval.coutTotal){
 		best_eval = *soluce;
 		cout << "--- Meilleur solution temporaire ---";
 		afficheListCamion();
@@ -406,9 +372,9 @@ void calculeTotal(double* tabDist, solution* soluce){
 /**
  *  calcul l'horaire de depart de tous les camions
  */
-bool calculHoraire(double* tabDist, solution* soluce){
+bool calculHoraire(solution* soluce){
 	list<Camion>::iterator cit = soluce->listLivraison.begin();
-	list<Camion>::iterator tempCamionIt = cit;
+	list<Camion>::const_iterator tempCamionIt = cit;
 	list<TEcheance>::const_iterator tit ;
 	cit++;
 	
@@ -426,7 +392,7 @@ bool calculHoraire(double* tabDist, solution* soluce){
 /**
  *  Définie un heuristique de base et ordonne les camions par ordre décroissant de cout de stockage
  */
-void ordrePassage(double* tabDist) {
+void ordrePassage() {
 	list<Camion> tempEssai;
 	int date = -1;
 	/**
@@ -450,9 +416,9 @@ void ordrePassage(double* tabDist) {
 		 *  Tri la liste de camion en fonction des couts de stockage
 		 */
 		triCamionCoutStockage(&best_eval);
-
+		
 		if (date == -1)
-			calculHoraire(tabDist, &best_eval);
+			calculHoraire(&best_eval);
 		else {
 			/**
 			 *  calcul l'horaire de depart de tous les camions
@@ -467,7 +433,7 @@ void ordrePassage(double* tabDist) {
 				tempCamionIt = cit;
 			}
 		}
-
+		
 		/**
 		 *  Calcule le nouveau cout de stockage pour chacun des camions
 		 */
@@ -484,19 +450,101 @@ void ordrePassage(double* tabDist) {
 	best_eval.listLivraison.assign(tempEssai.begin(), tempEssai.end());
 }
 
+void calculeSolution(solution soluce, int position){
+	calculeTotal(&soluce);
+	//switchCamion(soluce, position);
+	grouperPlusTard(soluce, position);
+	avanceDepartCamion(soluce, position);
+	//departCamion(soluce, position);
+}
+
 /**
  *  switch toutes les livraisons sauf la premiere
  */
-void switchCamion(double* tabDist, solution soluce){
+void switchCamion(solution soluce, int position){
+	list<Camion>::const_iterator cit;
+	while ( position < soluce.listLivraison.size() ) {
+		solution copySoluce = soluce;
+		
+		cit = copySoluce.listLivraison.begin();
+		for (int i = 0; i < position; i++) {
+			cit++;
+		}
+		
+		copySoluce.listLivraison.push_back( cit.operator*() );
+		copySoluce.listLivraison.erase(cit);
+		
+		if ( calculHoraire(&copySoluce) ){
+			calculeSolution(copySoluce, position);
+		}
+		position++;
+	}
+}
+
+void grouperPlusTard(solution soluce, int position){
+	if (position == nbrTrajet) {
+		exit(0);
+	}
 	
+	/**
+	 *  itérateur qui parcours les livraisons à tester
+	 */
+	list<Camion>::const_iterator cit = soluce.listLivraison.begin();
+	list<TEcheance>::const_iterator tit;
+	cit++;
+	int i = 1;
+	
+	/**
+	 *  itérateur qui reparcours la liste pour effectuer les tests
+	 */
+	list<Camion>::iterator ccit;
+	list<TEcheance>::iterator ctit;
+	int ci;
+	
+	for (; cit != soluce.listLivraison.end(); cit++) {
+		tit = cit->aLivrer.begin();
+		for (; tit != cit->aLivrer.end(); tit++) {
+			ccit = soluce.listLivraison.begin();
+			ci = 0;
+			while (i < ci) {
+				ctit = ccit->aLivrer.begin();
+				if (ctit->cli == tit->cli) {
+					if (ccit->aLivrer.size() < capacite) {
+						for (; ctit != ccit->aLivrer.end(); ctit++) {
+							if (tit->di < ctit->di) {
+								TEcheance temp = tit.operator*();
+								ccit->aLivrer.insert(tit, temp) ;
+								ccit->aLivrer.erase( tit );
+								break;
+							}
+						}
+						if ( calculHoraire(&soluce) ){
+							calculeSolution(soluce, position++);
+						}
+					}
+					else
+						break;
+				}
+				ci++;
+				ccit++;
+			}
+			i++;
+		}
+		position++;
+	}
 }
 
 /**
  *  effectuer une livraison apres la derniere livraison si possible
  */
-void avanceDepartCamion(double* tabDist, solution soluce){
+void avanceDepartCamion(solution soluce, int position){
+	if (position == nbrTrajet) {
+		exit(0);
+	}
 	
-	list<Camion>::iterator cit = soluce.listLivraison.begin();
+	list<Camion>::const_iterator cit = soluce.listLivraison.begin();
+	list<Camion>::iterator ccit;
+	list<TEcheance>::const_iterator clit;
 	int dateFirst = cit->dateDepart;
 	int numClientFirst = cit->numClient;
 	int i = 0, j = 0;
@@ -507,73 +555,82 @@ void avanceDepartCamion(double* tabDist, solution soluce){
 		for (; lit != cit->aLivrer.end(); lit++) {
 			if (lit->di > ( dateFirst + tabDist[numClientFirst] + tabDist[lit->cli] ) ){
 				solution copySoluce = soluce;
-
-				list<Camion>::iterator ccit = copySoluce.listLivraison.begin();
+				
+				ccit = copySoluce.listLivraison.begin();
 				for (int x=0; x<i; x++) {
 					ccit++;
 				}
-				list<TEcheance>::const_iterator clit = ccit->aLivrer.begin();
+				clit = ccit->aLivrer.begin();
 				for	(int y=0; y<j; y++) {
 					clit++;
 				}
-
+				
 				copySoluce.listLivraison.push_front( ajoutCamion(clit.operator*() ));
 				ccit->aLivrer.erase( clit );
-				
+				//	si le camion ne contient plus de livraison alors le supprimer
+				if (ccit->aLivrer.empty())
+					ccit.~__list_iterator();
+								
 				/**
 				 *  Calcule le cout total de notre solution
 				 */
-				calculeTotal(tabDist, &copySoluce);
-
-				avanceDepartCamion(tabDist, copySoluce);
+				calculeSolution(copySoluce, position++);
 			}
-			switchCamion(tabDist, soluce);
 			j++;
 		}
 		i++;
+		position++;
 	}
 }
 
 /**
- *  calcule d'autres solutions probable
+ *  effectuer une livraison apres la derniere livraison
  */
-void departCamion(double* tabDist, solution soluce) {
-	list<Camion>::iterator cit = soluce.listLivraison.begin();
+void departCamion(solution soluce, int position){
+	if (position == nbrTrajet) {
+		exit(0);
+	}
+	
+	list<Camion>::const_iterator cit = soluce.listLivraison.begin();
+	list<TEcheance>::const_iterator lit;
+	list<Camion>::iterator ccit;
+	list<TEcheance>::const_iterator clit;
 	int i = 0, j = 0;
 	
-	/**
-	 *  effectuer une livraison apres la derniere livraison si possible
-	 */
-	avanceDepartCamion(tabDist, soluce);
-
 	for (; cit != soluce.listLivraison.end(); cit++) {
-		list<TEcheance>::const_iterator lit = cit->aLivrer.begin();
+		lit = cit->aLivrer.begin();
 		j = 0;
 		for (; lit != cit->aLivrer.end(); lit++) {
 			solution copySoluce = soluce;
 			
-			list<Camion>::iterator ccit = copySoluce.listLivraison.begin();
+			ccit = copySoluce.listLivraison.begin();
 			for (int x=0; x<i; x++) {
 				ccit++;
 			}
-			list<TEcheance>::const_iterator clit = ccit->aLivrer.begin();
+			clit = ccit->aLivrer.begin();
 			for	(int y=0; y<j; y++) {
 				clit++;
 			}
 			
 			copySoluce.listLivraison.push_front( ajoutCamion(clit.operator*() ));
 			ccit->aLivrer.erase( clit );
-
-			if ( calculHoraire(tabDist, &copySoluce) ){
+			
+			//	si le camion ne contient plus de livraison alors le supprimer
+			if (ccit->aLivrer.empty())
+				ccit.~__list_iterator();
+			
+			switchCamion(copySoluce, position);
+			
+			if ( calculHoraire(&copySoluce) ){
 				/**
 				 *  Calcule le cout total de notre solution
 				 */
-				calculeTotal(tabDist, &copySoluce);
+				calculeTotal(&copySoluce);
 				
 				/**
 				 *  test encore une amélioration sur cette solution en avancant des départs
 				 */
-				avanceDepartCamion(tabDist, copySoluce);
+				avanceDepartCamion(copySoluce, position++);
 			}
 			j++;
 		}
@@ -595,12 +652,10 @@ int main(int argc, const char * argv[]) {
 		EXIT_FAILURE;
 	
 	/**
-	 *  Mise en place d'un compteur de temps
+	 *  Mise en place et lancement d'un compteur de temps
 	 */
     struct timeval tbegin,tend;
-	
-    // Lancement du chronométre
-    gettimeofday(&tbegin,NULL);
+	gettimeofday(&tbegin,NULL);
 	
 	/**
 	 *  ordonne la liste par date d'echeance croissante
@@ -615,35 +670,32 @@ int main(int argc, const char * argv[]) {
 	/**
 	 *  Recupere la distance de chaque client et la stock dans un tableau
 	 */
-	list<Client>::iterator tempClient = listClient.begin();
-	int i=1;
-	double tabDist[nbrClient];
-	
-	for (; tempClient != listClient.end(); tempClient++){
-		tabDist[i] = tempClient->distance;
-		i++;
-	}
+	distanceClient();
 	
 	/**
 	 *  Définie un heuristique de base
-	 *  Il ordonne les camions par ordre décroissant de cout de stockage
 	 */
-	ordrePassage(tabDist);
+	ordrePassage();
+	calculHoraire(&best_eval);
 	
 	/**
 	 *  calcul le cout total de notre heuristique de base
 	 */
-	calculeTotal(tabDist);
+	calculeTotal();
+	
 	soluce = best_eval;
 	
 	/**
 	 *  calcule d'autres solutions probable
 	 */
-	departCamion(tabDist, soluce);
-		
-	// Arret du chronométre
-    gettimeofday(&tend,NULL);
+	calculeSolution(soluce, 1);
+	
+	/**
+	 *  Arret du chronométre
+	 */
+	gettimeofday(&tend,NULL);
     texec=((double)(1000*(tend.tv_sec-tbegin.tv_sec)+((tend.tv_usec-tbegin.tv_usec)/1000)))/1000.;
+
 	
 	/**
 	 *  affiche le resutlat
