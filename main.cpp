@@ -272,7 +272,7 @@ void triCamionCoutStockage(solution* soluce) {
 			temp.push_back( lit.operator*() );
 		lit++;
 	}
-	//le but étant de créer une nouvelle liste dans laquelle nous y insereront un par un nos element en fonction de la valeur de di
+	//le but étant de créer une nouvelle liste dans laquelle nous y insereront un par un nos elements en fonction de la valeur de di
 	
 	soluce->listLivraison.assign(temp.begin(), temp.end());			//remplace tous les elements de la liste echeance par la liste temporaire
 }
@@ -344,6 +344,9 @@ void calculeTotal(){
 	}
 	calCoutTransport = coutTransport * calCoutTransport;
 	best_eval.coutTotal += calCoutTransport;
+	cout << "--- Meilleur solution temporaire ---";
+	afficheListCamion();
+	cout << endl << endl;
 }
 
 /**
@@ -360,7 +363,7 @@ void calculeTotal(solution* soluce){
 	}
 	calCoutTransport = coutTransport * calCoutTransport;
 	soluce->coutTotal += calCoutTransport;
-	
+
 	if (soluce->coutTotal < best_eval.coutTotal){
 		best_eval = *soluce;
 		cout << "--- Meilleur solution temporaire ---";
@@ -375,9 +378,9 @@ void calculeTotal(solution* soluce){
 bool calculHoraire(solution* soluce){
 	list<Camion>::iterator cit = soluce->listLivraison.begin();
 	list<Camion>::const_iterator tempCamionIt = cit;
-	list<TEcheance>::const_iterator tit ;
+	list<TEcheance>::const_iterator tit = cit->aLivrer.begin(); ;
+	cit->dateDepart = tit->di;
 	cit++;
-	
 	for (; cit != soluce->listLivraison.end(); cit++) {
 		cit->dateDepart = tempCamionIt->dateDepart - (tabDist[tempCamionIt->numClient] + tabDist[cit->numClient]) ;
 		tit = cit->aLivrer.begin();
@@ -450,88 +453,75 @@ void ordrePassage() {
 	best_eval.listLivraison.assign(tempEssai.begin(), tempEssai.end());
 }
 
-void calculeSolution(solution soluce, int position){
-	calculeTotal(&soluce);
-	//switchCamion(soluce, position);
-	grouperPlusTard(soluce, position);
-	avanceDepartCamion(soluce, position);
-	//departCamion(soluce, position);
-}
-
 /**
  *  switch toutes les livraisons sauf la premiere
  */
 void switchCamion(solution soluce, int position){
 	list<Camion>::const_iterator cit;
-	while ( position < soluce.listLivraison.size() ) {
+	int entier = 0 + position;
+	
+	while ( entier < soluce.listLivraison.size() ) {
 		solution copySoluce = soluce;
-		
+
 		cit = copySoluce.listLivraison.begin();
-		for (int i = 0; i < position; i++) {
+		for(int i = 0; i<position; i++)
+			cit++;
+		
+		for (int i=0; i < entier; i++) {
+			copySoluce.listLivraison.push_back( cit.operator*() );
+			copySoluce.listLivraison.erase(cit);
 			cit++;
 		}
-		
-		copySoluce.listLivraison.push_back( cit.operator*() );
-		copySoluce.listLivraison.erase(cit);
-		
+
 		if ( calculHoraire(&copySoluce) ){
-			calculeSolution(copySoluce, position);
+			calculeTotal(&copySoluce);
+			switchCamion(copySoluce, position+1);
 		}
-		position++;
+		entier++;
 	}
 }
 
-void grouperPlusTard(solution soluce, int position){
-	if (position == nbrTrajet) {
-		exit(0);
-	}
-	
-	/**
-	 *  itérateur qui parcours les livraisons à tester
-	 */
-	list<Camion>::const_iterator cit = soluce.listLivraison.begin();
-	list<TEcheance>::const_iterator tit;
-	cit++;
-	int i = 1;
-	
-	/**
-	 *  itérateur qui reparcours la liste pour effectuer les tests
-	 */
+int groupement(solution soluce) {
+	list<Camion>::iterator cit;
+	list<TEcheance>::iterator tit;
 	list<Camion>::iterator ccit;
 	list<TEcheance>::iterator ctit;
-	int ci;
 	
-	for (; cit != soluce.listLivraison.end(); cit++) {
+	for (int i = 0; i < soluce.listLivraison.size()-1; i++) {
+		ccit = soluce.listLivraison.begin();
+		cit = soluce.listLivraison.begin();
+		advance(cit, i+1);
+		advance(ccit, i+2);
 		tit = cit->aLivrer.begin();
-		for (; tit != cit->aLivrer.end(); tit++) {
-			ccit = soluce.listLivraison.begin();
-			ci = 0;
-			while (i < ci) {
-				ctit = ccit->aLivrer.begin();
-				if (ctit->cli == tit->cli) {
-					if (ccit->aLivrer.size() < capacite) {
-						for (; ctit != ccit->aLivrer.end(); ctit++) {
-							if (tit->di < ctit->di) {
-								TEcheance temp = tit.operator*();
-								ccit->aLivrer.insert(tit, temp) ;
-								ccit->aLivrer.erase( tit );
-								break;
-							}
-						}
-						if ( calculHoraire(&soluce) ){
-							calculeSolution(soluce, position++);
-						}
-					}
-					else
+
+		while ( cit != ccit && ccit != soluce.listLivraison.end() ) {
+			ctit = ccit->aLivrer.begin();
+			if (tit->di < ctit->di && cit->aLivrer.size() < capacite && cit->numClient == ccit->numClient) {
+				for (; tit != cit->aLivrer.end(); tit++) {
+					if (tit->di > ctit->di) {
+						cit->aLivrer.insert(tit, ctit.operator*());
 						break;
+					}
+					else {
+						cit->aLivrer.push_back(ctit.operator*());
+						break;
+					}
 				}
-				ci++;
-				ccit++;
+				ccit->aLivrer.erase(ctit);
+				
+				if (ccit->aLivrer.empty())
+					soluce.listLivraison.erase(ccit);
+				
+				if ( calculHoraire(&soluce) ){
+					calculeTotal(&soluce);
+					groupement(soluce);
+					return 0;
+				}
 			}
-			i++;
+			ccit++;
 		}
-		position++;
 	}
+	return 0;
 }
 
 /**
@@ -574,7 +564,9 @@ void avanceDepartCamion(solution soluce, int position){
 				/**
 				 *  Calcule le cout total de notre solution
 				 */
-				calculeSolution(copySoluce, position++);
+				calculeTotal(&copySoluce);
+				groupement(copySoluce);
+				avanceDepartCamion(copySoluce, position+1);
 			}
 			j++;
 		}
@@ -584,7 +576,7 @@ void avanceDepartCamion(solution soluce, int position){
 }
 
 /**
- *  effectuer une livraison apres la derniere livraison
+ *  effectuer une livraison apres la derniere livraison et decale le reste pour s'adapter
  */
 void departCamion(solution soluce, int position){
 	if (position == nbrTrajet) {
@@ -618,19 +610,12 @@ void departCamion(solution soluce, int position){
 			//	si le camion ne contient plus de livraison alors le supprimer
 			if (ccit->aLivrer.empty())
 				ccit.~__list_iterator();
-			
-			switchCamion(copySoluce, position);
-			
-			if ( calculHoraire(&copySoluce) ){
-				/**
-				 *  Calcule le cout total de notre solution
-				 */
+			/**
+			 *  Calcule le cout total de notre solution
+			 */
+			if(calculHoraire(&copySoluce)){
 				calculeTotal(&copySoluce);
-				
-				/**
-				 *  test encore une amélioration sur cette solution en avancant des départs
-				 */
-				avanceDepartCamion(copySoluce, position++);
+				groupement(copySoluce);
 			}
 			j++;
 		}
@@ -639,7 +624,7 @@ void departCamion(solution soluce, int position){
 }
 
 int main(int argc, const char * argv[]) {
-	solution soluce;
+
 	/**
 	 *  on passe en argument de ligne de commande le chemin vers le fichier décrivant l'instance
 	 */
@@ -682,13 +667,167 @@ int main(int argc, const char * argv[]) {
 	 *  calcul le cout total de notre heuristique de base
 	 */
 	calculeTotal();
-	
-	soluce = best_eval;
+	solution heuristique_de_base = best_eval;
 	
 	/**
 	 *  calcule d'autres solutions probable
 	 */
-	calculeSolution(soluce, 1);
+	departCamion(heuristique_de_base, 0);
+	avanceDepartCamion(heuristique_de_base, 0);
+	switchCamion(heuristique_de_base, 0);
+	
+	int j = 0;
+	while (j !=10) {
+		solution  soluce = heuristique_de_base;
+		for (int i = 0; i<24; i++){
+			if (i == 0) {
+				departCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				groupement(soluce);
+			}
+			if (i == 1) {
+				departCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				groupement(soluce);
+				avanceDepartCamion(soluce, 0);
+			}
+			if (i == 2) {
+				departCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				groupement(soluce);
+			}
+			if (i == 3) {
+				departCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				groupement(soluce);
+				switchCamion(soluce, 0);
+			}
+			if (i == 4) {
+				departCamion(soluce, 0);
+				groupement(soluce);
+				switchCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+			}
+			if (i == 5) {
+				departCamion(soluce, 0);
+				groupement(soluce);
+				avanceDepartCamion(soluce, 0);
+				switchCamion(soluce, 0);
+			}
+			if (i == 6) {
+				switchCamion(soluce, 0);
+				departCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				groupement(soluce);
+			}
+			if (i == 7) {
+				switchCamion(soluce, 0);
+				departCamion(soluce, 0);
+				groupement(soluce);
+				avanceDepartCamion(soluce, 0);
+			}
+			if (i == 8) {
+				switchCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				groupement(soluce);
+				departCamion(soluce, 0);
+			}
+			if (i == 9) {
+				switchCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				departCamion(soluce, 0);
+				groupement(soluce);
+			}
+			if (i == 10) {
+				switchCamion(soluce, 0);
+				groupement(soluce);
+				departCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+			}
+			if (i == 11) {
+				switchCamion(soluce, 0);
+				groupement(soluce);
+				avanceDepartCamion(soluce, 0);
+				departCamion(soluce, 0);
+			}
+			if (i == 12) {
+				avanceDepartCamion(soluce, 0);
+				departCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				groupement(soluce);
+			}
+			if (i == 13) {
+				avanceDepartCamion(soluce, 0);
+				departCamion(soluce, 0);
+				groupement(soluce);
+				switchCamion(soluce, 0);
+			}
+			if (i == 14) {
+				avanceDepartCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				groupement(soluce);
+				departCamion(soluce, 0);
+			}
+			if (i == 15) {
+				avanceDepartCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				departCamion(soluce, 0);
+				groupement(soluce);
+			}
+			if (i == 16) {
+				avanceDepartCamion(soluce, 0);
+				groupement(soluce);
+				departCamion(soluce, 0);
+				switchCamion(soluce, 0);
+			}
+			if (i == 17) {
+				avanceDepartCamion(soluce, 0);
+				groupement(soluce);
+				switchCamion(soluce, 0);
+				departCamion(soluce, 0);
+			}
+			if (i == 18) {
+				groupement(soluce);
+				avanceDepartCamion(soluce, 0);
+				departCamion(soluce, 0);
+				switchCamion(soluce, 0);
+			}
+			if (i == 19) {
+				groupement(soluce);
+				avanceDepartCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				departCamion(soluce, 0);
+			}
+			if (i == 20) {
+				groupement(soluce);
+				switchCamion(soluce, 0);
+				departCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+			}
+			if (i == 21) {
+				groupement(soluce);
+				switchCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				departCamion(soluce, 0);
+			}
+			if (i == 22) {
+				groupement(soluce);
+				departCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+				switchCamion(soluce, 0);
+			}
+			if (i == 23) {
+				groupement(soluce);
+				departCamion(soluce, 0);
+				switchCamion(soluce, 0);
+				avanceDepartCamion(soluce, 0);
+			}
+		}
+		heuristique_de_base = best_eval;
+		j++;
+	}
 	
 	/**
 	 *  Arret du chronométre
