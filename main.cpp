@@ -490,12 +490,13 @@ int groupement(solution soluce) {
 	for (int i = 0; i < soluce.listLivraison.size()-1; i++) {
 		ccit = soluce.listLivraison.begin();
 		cit = soluce.listLivraison.begin();
-		advance(cit, i+1);
-		advance(ccit, i+2);
+		advance(cit, i);
+		advance(ccit, i+1);
 		tit = cit->aLivrer.begin();
-
+		
 		while ( cit != ccit && ccit != soluce.listLivraison.end() ) {
 			ctit = ccit->aLivrer.begin();
+			
 			if (tit->di < ctit->di && cit->aLivrer.size() < capacite && cit->numClient == ccit->numClient) {
 				for (; tit != cit->aLivrer.end(); tit++) {
 					if (tit->di > ctit->di) {

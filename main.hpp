@@ -122,7 +122,7 @@ void calculeSolution(solution soluce, int position);
  */
 void switchCamion(solution soluce, int position);
 
-void grouperPlusTard(solution soluce, int position);
+int groupement(solution soluce);
 
 /**
  *  effectuer une livraison apres la derniere livraison si possible
