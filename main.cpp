@@ -476,6 +476,7 @@ void switchLivraison(solution soluce, int position){
 		if ( calculHoraire(&copySoluce) ){
 			calculeTotal(&copySoluce);
 			switchLivraison(copySoluce, position+1);
+			groupement(copySoluce);
 		}
 		entier++;
 	}
@@ -566,7 +567,8 @@ void avanceDepartLivraison(solution soluce, int position){
 				 *  Calcule le cout total de notre solution
 				 */
 				calculeTotal(&copySoluce);
-				groupement(copySoluce);
+				switchLivraison(copySoluce, position+1);
+//				groupement(copySoluce);
 				avanceDepartLivraison(copySoluce, position+1);
 			}
 			j++;
@@ -616,7 +618,8 @@ void departLivraison(solution soluce, int position){
 			 */
 			if(calculHoraire(&copySoluce)){
 				calculeTotal(&copySoluce);
-				groupement(copySoluce);
+				switchLivraison(copySoluce, position+1);
+//				groupement(copySoluce);
 			}
 			j++;
 		}
@@ -676,7 +679,7 @@ int main(int argc, const char * argv[]) {
 	departLivraison(heuristique_de_base, 0);
 	avanceDepartLivraison(heuristique_de_base, 0);
 	switchLivraison(heuristique_de_base, 0);
-	
+/*
 	int j = 0;
 	while (j !=10) {
 		solution  soluce = heuristique_de_base;
@@ -829,7 +832,7 @@ int main(int argc, const char * argv[]) {
 		heuristique_de_base = best_eval;
 		j++;
 	}
-	
+	*/
 	/**
 	 *  Arret du chronométre
 	 */
